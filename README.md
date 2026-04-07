@@ -2,7 +2,7 @@
 
 ## What Jarvis Can Do
 - **Wake up** on two claps (start) or hearing "Jarvis" / "Hey Jarvis"
-- **Greet you** based on time of day ("Good morning, Young")
+- **Greet you** based on time of day ("Good morning, sir")
 - **Full AI conversation** powered by Claude (same brain as Claude.ai)
 - **Weather** — "Jarvis, what's the weather?"
 - **Alarms** — "Jarvis, set an alarm for 7:30 AM"
