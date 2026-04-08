@@ -1,4 +1,4 @@
-# 🤖 JARVIS — Complete Setup Guide
+# JARVIS — Complete Setup Guide
 
 ## What Jarvis Can Do
 - **Wake up** on two claps (start) or hearing "Jarvis" / "Hey Jarvis"
