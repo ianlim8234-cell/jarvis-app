@@ -1,3 +1,8 @@
+# ----------------------------------------
+# Created by: Young Lim
+# GitHub: github.com/ianlim8234-cell
+# ----------------------------------------
+
 import os
 import sys
 import time
