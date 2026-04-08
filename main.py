@@ -435,7 +435,7 @@ def _on_double_clap():
 # ─────────────────────────────────────────────────────────────────────────────
 def main():
     if not ANTHROPIC_API_KEY:
-        print("❌  ANTHROPIC_API_KEY not set in .env file.")
+        print("ANTHROPIC_API_KEY not set in .env file.")
         sys.exit(1)
 
     print("=" * 60)
