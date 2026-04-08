@@ -14,7 +14,6 @@ import random
 import json
 import re
 import signal
-
 import numpy as np
 import sounddevice as sd
 import speech_recognition as sr
