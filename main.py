@@ -23,9 +23,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CONFIG
-# ─────────────────────────────────────────────────────────────────────────────
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 WEATHER_API_KEY   = os.getenv("WEATHER_API_KEY", "")
 DEFAULT_CITY      = os.getenv("DEFAULT_CITY", "[YOUR CITY HERE]")
@@ -37,28 +34,17 @@ SAMPLE_RATE       = 44_100
 BLOCK_SIZE        = 1_024
 MAX_HISTORY       = 20
 
-# ─────────────────────────────────────────────────────────────────────────────
-# GLOBAL STATE
-# ─────────────────────────────────────────────────────────────────────────────
-_active          = False        # True = Jarvis should take a turn
+_active          = False        
 _lock            = threading.Lock()
-_jarvis_speaking = False        # True while TTS is running (ignore mic)
-_clap_welcomed   = False        # True after first double-clap
+_jarvis_speaking = False        
+_clap_welcomed   = False        
 _history         = []
 _interrupt_requested = False
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TTS  — uses macOS built-in 'say' command (reliable, no pyttsx3 issues)
-# ─────────────────────────────────────────────────────────────────────────────
-# Daniel is a natural-sounding British male voice — very Jarvis-like.
-# If Daniel isn't installed: System Preferences → Accessibility → Spoken Content
-# → Manage Voices → download Daniel (UK).
-# Falls back to Alex (default macOS voice) if Daniel not found.
 TTS_VOICE = "Daniel"
-TTS_RATE  = 185   # words per minute
+TTS_RATE  = 185   
 
 def _init_tts():
-    # verify voice exists, fall back to Alex
     global TTS_VOICE
     result = subprocess.run(["say", "-v", "?"], capture_output=True, text=True)
     if TTS_VOICE.lower() not in result.stdout.lower():
@@ -72,7 +58,6 @@ def speak(text: str):
     print(f"\n JARVIS: {text}\n")
     _jarvis_speaking = True
     
-    # Split into sentences so we can interrupt between them
     sentences = re.split(r'(?<=[.!?])\s+', text)
     for sentence in sentences:
         if _interrupt_requested:
@@ -81,9 +66,7 @@ def speak(text: str):
     
     time.sleep(0.3)
     _jarvis_speaking = False
-# ─────────────────────────────────────────────────────────────────────────────
-# GREETING
-# ─────────────────────────────────────────────────────────────────────────────
+    
 def time_greeting() -> str:
     hour = datetime.datetime.now().hour
     if 5 <= hour < 12:
@@ -101,9 +84,6 @@ def time_greeting() -> str:
     ]
     return random.choice(options)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CLAP DETECTION
-# ─────────────────────────────────────────────────────────────────────────────
 class ClapDetector:
     def __init__(self, callback):
         self.callback   = callback
@@ -135,9 +115,6 @@ class ClapDetector:
             self._stream.stop()
             self._stream.close()
 
-# ─────────────────────────────────────────────────────────────────────────────
-# SPEECH RECOGNITION
-# ─────────────────────────────────────────────────────────────────────────────
 _recognizer = sr.Recognizer()
 _recognizer.pause_threshold    = 1.0
 _recognizer.energy_threshold   = 300
@@ -160,9 +137,6 @@ def listen(timeout=7, phrase_limit=25) -> str:
             print(f"[STT Error] {e}")
             return ""
 
-# ─────────────────────────────────────────────────────────────────────────────
-# ACTIONS
-# ─────────────────────────────────────────────────────────────────────────────
 _alarms: list[dict] = []
 
 def _alarm_watcher():
@@ -218,9 +192,8 @@ def search_youtube(query: str):
 
 def play_spotify(query: str):
     try:
-        # Try opening Spotify app first
         subprocess.Popen(["open", "-a", "Spotify"])
-        time.sleep(2)  # give Spotify time to open
+        time.sleep(2) 
         uri = f"spotify:search:{requests.utils.quote(query)}"
         subprocess.Popen(["open", uri])
         speak(f"Playing {query} on Spotify.")
@@ -245,9 +218,6 @@ def get_current_time() -> str:
 def get_current_date() -> str:
     return datetime.datetime.now().strftime("%A, %B %d, %Y")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# LOCAL COMMAND SHORTCUTS  (no API call needed)
-# ─────────────────────────────────────────────────────────────────────────────
 def _try_local(text: str) -> bool:
     """Handle simple commands locally. Return True if handled."""
     t = text.lower()
@@ -266,7 +236,6 @@ def _try_local(text: str) -> bool:
 
     if any(x in t for x in ["what's the weather", "weather today", "how's the weather", "weather in"]):
         city = DEFAULT_CITY
-        # try to extract city name after "in"
         m = re.search(r"weather in (.+)", t)
         if m:
             city = m.group(1).strip()
@@ -285,25 +254,21 @@ def _try_local(text: str) -> bool:
         open_website("open.spotify.com")
         return True
 
-    # "search youtube for X"
     m = re.search(r"search youtube (?:for )?(.+)", t)
     if m:
         search_youtube(m.group(1))
         return True
 
-    # "search for X" / "google X"
     m = re.search(r"(?:search (?:for )?|google )(.+)", t)
     if m:
         search_web(m.group(1))
         return True
 
-    # "play X on spotify"
     m = re.search(r"play (.+?) on spotify", t)
     if m:
         play_spotify(m.group(1))
         return True
 
-    # "set an alarm for X"
     m = re.search(r"set (?:an )?alarm for (.+)", t)
     if m:
         set_alarm(m.group(1))
@@ -317,9 +282,6 @@ def _try_local(text: str) -> bool:
 
     return False
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CLAUDE BRAIN
-# ─────────────────────────────────────────────────────────────────────────────
 _client = None
 
 SYSTEM_PROMPT = """You are JARVIS (Just A Rather Very Intelligent System), a witty and highly capable AI assistant — inspired by Tony Stark's Jarvis.
@@ -354,9 +316,6 @@ def ask_claude(text: str) -> str:
     except Exception as e:
         return f"I'm having trouble connecting right now. {e}"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CONVERSATION TURN
-# ─────────────────────────────────────────────────────────────────────────────
 def conversation_turn():
     user_input = listen(timeout=8, phrase_limit=30)
     
@@ -367,7 +326,6 @@ def conversation_turn():
         speak("Goodbye sir. Going to sleep.")
         os._exit(0)
 
-    # strip wake word from the front if present
     for w in WAKE_WORDS:
         if user_input.startswith(w):
             user_input = user_input[len(w):].strip()
@@ -380,7 +338,6 @@ def conversation_turn():
             speak("I'll be here when you need me.")
             return
 
-    # try local fast commands first
     if _try_local(user_input):
         return
 
@@ -388,9 +345,6 @@ def conversation_turn():
     reply = ask_claude(user_input)
     speak(reply)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# WAKE WORD LISTENER  (background thread)
-# ─────────────────────────────────────────────────────────────────────────────
 def _wake_word_loop():
     global _active, _interrupt_requested, _jarvis_speaking
     while True:
@@ -412,9 +366,6 @@ def _wake_word_loop():
                 if not _active:
                     _active = True
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CLAP CALLBACK
-# ─────────────────────────────────────────────────────────────────────────────
 def _on_double_clap():
     global _active, _clap_welcomed
     if _jarvis_speaking:
@@ -429,9 +380,7 @@ def _on_double_clap():
             _active = False
         speak(time_greeting())
         return
-# ─────────────────────────────────────────────────────────────────────────────
-# MAIN
-# ─────────────────────────────────────────────────────────────────────────────
+
 def main():
     if not ANTHROPIC_API_KEY:
         print("ANTHROPIC_API_KEY not set in .env file.")
